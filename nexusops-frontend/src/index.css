@@ -11,7 +11,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -112,7 +113,8 @@ input {
   color: #7dd3fc;
 }
 
-input {
+input,
+select {
   width: 100%;
   padding: 12px;
   margin: 8px 0;
@@ -122,8 +124,13 @@ input {
   color: white;
 }
 
+select {
+  color-scheme: dark;
+}
+
 button[type="submit"],
-.section-header button {
+.section-header button,
+.record-actions button {
   padding: 10px 14px;
   border: 0;
   border-radius: 8px;
@@ -132,8 +139,102 @@ button[type="submit"],
   cursor: pointer;
 }
 
+.record {
+  padding: 12px 0;
+  border-bottom: 1px solid #263248;
+}
+
+.record:last-child {
+  border-bottom: 0;
+}
+
+.record p {
+  margin-top: 0;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.status-badge-success {
+  border-color: #166534;
+  background: #14532d55;
+  color: #86efac;
+}
+
+.status-badge-danger {
+  border-color: #991b1b;
+  background: #7f1d1d55;
+  color: #fca5a5;
+}
+
+.status-badge-warning {
+  border-color: #92400e;
+  background: #78350f55;
+  color: #fcd34d;
+}
+
+.status-badge-info {
+  border-color: #075985;
+  background: #0c4a6e55;
+  color: #7dd3fc;
+}
+
+.status-badge-neutral {
+  border-color: #34445e;
+  background: #20334d;
+  color: #b8c4d8;
+}
+
+.edit-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.edit-form input,
+.edit-form select {
+  margin: 0;
+}
+
+.create-form {
+  margin: 16px 0;
+}
+
+.record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.secondary-button {
+  padding: 8px 12px;
+  border: 1px solid #34445e;
+  border-radius: 8px;
+  background: transparent;
+  color: #b8c4d8;
+  cursor: pointer;
+}
+
+.secondary-button:hover {
+  border-color: #7dd3fc;
+  color: #7dd3fc;
+}
+
 .error {
   color: #fca5a5 !important;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 @media (max-width: 700px) {
@@ -150,6 +251,10 @@ button[type="submit"],
   }
 
   .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-form {
     grid-template-columns: 1fr;
   }
 }
