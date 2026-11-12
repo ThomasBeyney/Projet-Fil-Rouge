@@ -5,10 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from .cloud_status import get_cloud_status
 from .database import get_db, settings
 from .models import Equipment, Incident, User, MonitoringCheck
 from .schemas import EquipmentData, EquipmentOut, IncidentData, IncidentOut, UserData, UserOut
 from .monitor import check_equipment, monitor_loop, safe_target
+
+
+
 
 
 @asynccontextmanager
@@ -26,6 +30,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="NexusOps API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin], allow_credentials=False, allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Content-Type"])
+
+@app.get("/api/cloud/status")
+async def cloud_status():
+    return await get_cloud_status()
 
 
 def get_or_404(db: Session, model, id: int):

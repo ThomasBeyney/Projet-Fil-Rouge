@@ -4,7 +4,7 @@
 Projet `rccmxvhwyptjyyceczqs` (Paris). Cinq tables créées avec RLS et aucun accès anon/authenticated. Le backend se connecte avec l'URI PostgreSQL du compte serveur, **jamais depuis React**.
 
 ## 1. Configuration privée
-Dans Supabase > Project > Connect, choisir **Session pooler** (port 5432), copier l'URI PostgreSQL. Sous Windows, si la connexion directe IPv6 ne fonctionne pas, le pooler de session est recommandé. Dans `backend`, copier `.env.example` vers `.env` et remplacer `DATABASE_URL` par la véritable URI en utilisant `postgresql+psycopg://` (pas `postgresql://`). Échapper les caractères spéciaux du mot de passe dans l'URI, ou utiliser un mot de passe compatible URL. Ne jamais partager `.env`.
+Dans Supabase > Project > Connect, choisir **Session pooler** (port 5432), copier l'URI PostgreSQL. Sous Windows, si la connexion directe IPv6 ne fonctionne pas, le pooler de session est recommandé. Dans `backend`, copier `.env.example` vers `.env` et remplacer `DATABASE_URL` par la véritable URI. Le backend utilise explicitement psycopg 3 même si l'URI Supabase commence par `postgresql://`. Échapper les caractères spéciaux du mot de passe dans l'URI, ou utiliser un mot de passe compatible URL. Le fichier `backend/.env` est chargé quel que soit le dossier depuis lequel le backend est lancé. Ne jamais partager `.env`.
 
 ## 2. Démarrage backend (PowerShell)
 ```powershell
