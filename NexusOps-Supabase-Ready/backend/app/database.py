@@ -9,6 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     database_url: str = ""
     frontend_origin: str = "http://localhost:5173"
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
     monitor_interval_seconds: int = 60
     enable_monitoring: bool = True
     model_config = SettingsConfigDict(

@@ -89,6 +89,15 @@ input::placeholder{color:#647993}
 .form-grid label input,.form-grid label select{margin-top:8px}
 .full-width{grid-column:1/-1}
 .form-error{color:#ffabb4;font-size:12px;margin:12px 0}
+.auth-screen{min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at 50% 0%,#18304d 0%,#0b1020 60%)}
+.auth-card{width:min(100%,420px);padding:34px;background:#121e31;border:1px solid #26364f;border-radius:16px;box-shadow:0 24px 70px #04091270}
+.auth-brand{padding:0 0 32px}
+.auth-card h1{font:800 28px Manrope;margin:0}
+.auth-card>.page-description{line-height:1.6;margin:10px 0 25px}
+.auth-card label{display:block;color:#adbed5;font-size:12px;font-weight:600;margin:16px 0}
+.auth-card label input{margin-top:8px}
+.auth-submit{width:100%;margin-top:10px}
+.account-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;color:#91a5bf;font-size:12px;flex-wrap:wrap}
 
 /* Badges et incidents */
 .status-badge{display:inline-block;padding:5px 9px;border-radius:6px;font-size:10px;font-weight:700;white-space:nowrap}

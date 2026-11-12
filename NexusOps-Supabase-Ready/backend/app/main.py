@@ -1,10 +1,11 @@
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from .auth import LoginRequest, TokenResponse, authenticate, require_authenticated
 from .cloud_status import get_cloud_status
 from .database import get_db, settings
 from .models import Equipment, Incident, User, MonitoringCheck
@@ -29,9 +30,23 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="NexusOps API", version="1.0.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin], allow_credentials=False, allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Content-Type"])
+app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin], allow_credentials=False, allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"])
+protected_router = APIRouter(
+    prefix="/api",
+    dependencies=[Depends(require_authenticated)],
+)
 
-@app.get("/api/cloud/status")
+@app.post("/api/auth/login", response_model=TokenResponse)
+async def login(data: LoginRequest, db: Session = Depends(get_db)):
+    return await authenticate(data, db)
+
+
+@app.get("/api/auth/me")
+def auth_me(email: str = Depends(require_authenticated)):
+    return {"email": email}
+
+
+@protected_router.get("/cloud/status")
 async def cloud_status():
     return await get_cloud_status()
 
@@ -56,12 +71,12 @@ def health():
     return {"status": "ok"}
 
 
-@app.get("/api/equipment", response_model=list[EquipmentOut])
+@protected_router.get("/equipment", response_model=list[EquipmentOut])
 def list_equipment(db: Session = Depends(get_db)):
     return db.scalars(select(Equipment).order_by(Equipment.id)).all()
 
 
-@app.post("/api/equipment", response_model=EquipmentOut, status_code=201)
+@protected_router.post("/equipment", response_model=EquipmentOut, status_code=201)
 def create_equipment(data: EquipmentData, db: Session = Depends(get_db)):
     if data.monitoring_enabled and not data.monitor_host:
         raise HTTPException(422, "Renseignez une IP pour activer la supervision")
@@ -73,7 +88,7 @@ def create_equipment(data: EquipmentData, db: Session = Depends(get_db)):
     return item
 
 
-@app.put("/api/equipment/{id}", response_model=EquipmentOut)
+@protected_router.put("/equipment/{id}", response_model=EquipmentOut)
 def update_equipment(id: int, data: EquipmentData, db: Session = Depends(get_db)):
     item = get_or_404(db, Equipment, id)
     if data.monitoring_enabled and not data.monitor_host:
@@ -89,7 +104,7 @@ def update_equipment(id: int, data: EquipmentData, db: Session = Depends(get_db)
     return item
 
 
-@app.delete("/api/equipment/{id}", status_code=204)
+@protected_router.delete("/equipment/{id}", status_code=204)
 def delete_equipment(id: int, db: Session = Depends(get_db)):
     item = get_or_404(db, Equipment, id)
     if db.scalar(select(Incident.id).where(Incident.equipment_id == id).limit(1)) is not None:
@@ -98,7 +113,7 @@ def delete_equipment(id: int, db: Session = Depends(get_db)):
     return Response(status_code=204)
 
 
-@app.post("/api/equipment/{id}/check", response_model=EquipmentOut)
+@protected_router.post("/equipment/{id}/check", response_model=EquipmentOut)
 async def check_now(id: int, db: Session = Depends(get_db)):
     item = get_or_404(db, Equipment, id)
     if not item.monitoring_enabled or not item.monitor_host:
@@ -112,12 +127,12 @@ def incident_out(item: Incident) -> IncidentOut:
     return IncidentOut(id=item.id, title=item.title, severity=item.severity, status=item.status, equipmentId=item.equipment_id)
 
 
-@app.get("/api/incidents", response_model=list[IncidentOut])
+@protected_router.get("/incidents", response_model=list[IncidentOut])
 def list_incidents(db: Session = Depends(get_db)):
     return [incident_out(i) for i in db.scalars(select(Incident).order_by(Incident.id)).all()]
 
 
-@app.post("/api/incidents", response_model=IncidentOut, status_code=201)
+@protected_router.post("/incidents", response_model=IncidentOut, status_code=201)
 def create_incident(data: IncidentData, db: Session = Depends(get_db)):
     get_or_404(db, Equipment, data.equipmentId)
     item = Incident(title=data.title, severity=data.severity, status=data.status, equipment_id=data.equipmentId)
@@ -125,7 +140,7 @@ def create_incident(data: IncidentData, db: Session = Depends(get_db)):
     return incident_out(item)
 
 
-@app.put("/api/incidents/{id}", response_model=IncidentOut)
+@protected_router.put("/incidents/{id}", response_model=IncidentOut)
 def update_incident(id: int, data: IncidentData, db: Session = Depends(get_db)):
     item = get_or_404(db, Incident, id)
     get_or_404(db, Equipment, data.equipmentId)
@@ -134,25 +149,25 @@ def update_incident(id: int, data: IncidentData, db: Session = Depends(get_db)):
     return incident_out(item)
 
 
-@app.delete("/api/incidents/{id}", status_code=204)
+@protected_router.delete("/incidents/{id}", status_code=204)
 def delete_incident(id: int, db: Session = Depends(get_db)):
     db.delete(get_or_404(db, Incident, id)); commit(db)
     return Response(status_code=204)
 
 
-@app.get("/api/users", response_model=list[UserOut])
+@protected_router.get("/users", response_model=list[UserOut])
 def list_users(db: Session = Depends(get_db)):
     return db.scalars(select(User).order_by(User.id)).all()
 
 
-@app.post("/api/users", response_model=UserOut, status_code=201)
+@protected_router.post("/users", response_model=UserOut, status_code=201)
 def create_user(data: UserData, db: Session = Depends(get_db)):
     item = User(**data.model_dump())
     db.add(item); commit(db); db.refresh(item)
     return item
 
 
-@app.put("/api/users/{id}", response_model=UserOut)
+@protected_router.put("/users/{id}", response_model=UserOut)
 def update_user(id: int, data: UserData, db: Session = Depends(get_db)):
     item = get_or_404(db, User, id)
     for key, value in data.model_dump().items(): setattr(item, key, value)
@@ -160,15 +175,18 @@ def update_user(id: int, data: UserData, db: Session = Depends(get_db)):
     return item
 
 
-@app.delete("/api/users/{id}", status_code=204)
+@protected_router.delete("/users/{id}", status_code=204)
 def delete_user(id: int, db: Session = Depends(get_db)):
     db.delete(get_or_404(db, User, id)); commit(db)
     return Response(status_code=204)
 
 
-@app.get("/api/equipment/{id}/history")
+@protected_router.get("/equipment/{id}/history")
 def equipment_history(id: int, limit: int = 50, db: Session = Depends(get_db)):
     get_or_404(db, Equipment, id)
     limit = max(1, min(limit, 500))
     checks = db.scalars(select(MonitoringCheck).where(MonitoringCheck.equipment_id == id).order_by(MonitoringCheck.checked_at.desc()).limit(limit)).all()
     return [{"id": c.id, "checked_at": c.checked_at, "status": c.status, "response_ms": c.response_ms, "error": c.error} for c in checks]
+
+
+app.include_router(protected_router)

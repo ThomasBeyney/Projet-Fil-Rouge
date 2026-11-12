@@ -50,6 +50,17 @@ export type CloudProvider = {
 
 const API_URL =
   import.meta.env.VITE_API_URL || "http://localhost:8000";
+let accessToken: string | null = null;
+
+export function setAccessToken(token: string | null) {
+  accessToken = token;
+}
+
+export type AuthToken = {
+  access_token: string;
+  token_type: "bearer";
+  expires_in: number;
+};
 
 
 export async function request<T>(
@@ -63,6 +74,7 @@ export async function request<T>(
       ...init,
       headers: {
         "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...init?.headers,
       },
     });
@@ -73,6 +85,10 @@ export async function request<T>(
   }
 
   if (!response.ok) {
+    if (response.status === 401 && accessToken) {
+      accessToken = null;
+      window.dispatchEvent(new Event("nexusops:session-expired"));
+    }
     const body = await response.json().catch(() => null);
     const detail = body?.detail;
 
@@ -89,6 +105,12 @@ export async function request<T>(
 }
 
 export const api = {
+  login: (email: string, password: string) =>
+    request<AuthToken>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+
   // Equipements
   list: <T>(collection: Collection) =>
     request<T[]>(`/${collection}`),
