@@ -1,0 +1,17 @@
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+NexusOps-Supabase-Ready/backend/.venv-new/
+mdp supabase.txt
+
+# Node
+node_modules/
+dist/
+

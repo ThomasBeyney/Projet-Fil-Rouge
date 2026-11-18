@@ -1,0 +1,165 @@
+
+export type Equipment = {
+  id: number;
+  name: string;
+  type: string;
+  site: string;
+  status: "online" | "offline" | "unknown";
+  monitor_host: string | null;
+  monitoring_enabled: boolean;
+  last_checked_at: string | null;
+  response_ms: number | null;
+};
+
+export type Incident = {
+  id: number;
+  title: string;
+  severity: "high" | "medium" | "low";
+  status: "open" | "in_progress" | "resolved";
+  equipmentId: number;
+};
+
+export type User = {
+  id: number;
+  name: string;
+  email: string;
+  role: "admin" | "operator" | "viewer";
+  password?: string;
+};
+
+export type Collection = "equipment" | "incidents" | "users";
+
+
+export type CloudIncident = {
+  id: string;
+  name: string;
+  status: string;
+};
+
+export type CloudProvider = {
+  id: string;
+  name: string;
+  indicator: string;
+  description: string;
+  incidents: CloudIncident[];
+  affected_count: number;
+  checked_at: string;
+  error: string | null;
+};
+
+
+
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8000";
+let accessToken: string | null = null;
+
+export function setAccessToken(token: string | null) {
+  accessToken = token;
+}
+
+export type AuthToken = {
+  access_token: string;
+  token_type: "bearer";
+  expires_in: number;
+};
+
+
+export async function request<T>(
+  path: string,
+  init?: RequestInit
+): Promise<T> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_URL}/api${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...init?.headers,
+      },
+    });
+  } catch {
+    throw new Error(
+      "API inaccessible. Vérifiez que FastAPI et PostgreSQL sont démarrés."
+    );
+  }
+
+  if (!response.ok) {
+    if (response.status === 401 && accessToken) {
+      accessToken = null;
+      window.dispatchEvent(new Event("nexusops:session-expired"));
+    }
+    const body = await response.json().catch(() => null);
+    const detail = body?.detail;
+
+    throw new Error(
+      typeof detail === "string"
+        ? detail
+        : `Erreur HTTP ${response.status}`
+    );
+  }
+
+  return response.status === 204
+    ? (undefined as T)
+    : (response.json() as Promise<T>);
+}
+
+export const api = {
+  login: (email: string, password: string) =>
+    request<AuthToken>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+
+  // Equipements
+  list: <T>(collection: Collection) =>
+    request<T[]>(`/${collection}`),
+
+  // Ajout / modification
+  save: <T extends { id: number }>(
+    collection: Collection,
+    item: T
+  ) =>
+    request<T>(
+      `/${collection}${item.id ? `/${item.id}` : ""}`,
+      {
+        method: item.id ? "PUT" : "POST",
+        body: JSON.stringify(
+          Object.fromEntries(
+            Object.entries(item).filter(
+              ([key]) =>
+                key !== "id" &&
+                (collection !== "equipment" ||
+                  ![
+                    "status",
+                    "last_checked_at",
+                    "response_ms",
+                  ].includes(key))
+            )
+          )
+        ),
+      }
+    ),
+
+
+  remove: (collection: Collection, id: number) =>
+    request<void>(`/${collection}/${id}`, {
+      method: "DELETE",
+    }),
+
+
+  check: (id: number) =>
+    request<Equipment>(`/equipment/${id}/check`, {
+      method: "POST",
+    }),
+
+ 
+  cloudStatus: () =>
+    request<CloudProvider[]>("/cloud/status"),
+};
+
+// Fonction indépendante utilisable dans Dashboard.tsx
+export async function fetchCloudStatus(): Promise<CloudProvider[]> {
+  return request<CloudProvider[]>("/cloud/status");
+}
